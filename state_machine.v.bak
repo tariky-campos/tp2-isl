@@ -1,0 +1,74 @@
+module state_machine (
+    input clock,
+    input reset,
+    input [3:0] number,
+    output reg error_led,
+    reg [1:0] error_count,
+    reg [3:0] state, next_state,
+    output reg [6:0] display_num
+    
+);
+
+    // Definindo os estados como parâmetros (4 bits)
+    parameter q0 = 4'b0000, q1 = 4'b0001, q2 = 4'b0010, q3 = 4'b0011,
+              q4 = 4'b0100, q5 = 4'b0101, q6 = 4'b0101;
+
+     // Variáveis de estado agora com 4 bits
+     // Contador para rastrear o número de erros
+
+    // Sequência esperada: 5, 7, 5, 1, 6, 4
+    parameter [3:0] N0 = 4'd5, N1 = 4'd7, N2 = 4'd5, N3 = 4'd1, N4 = 4'd6, N5 = 4'd4;
+
+    function [6:0] seg;
+        input [3:0] num;
+        case(num)
+            4'b0000: seg = 7'b1000000; // 0
+            4'b0001: seg = 7'b1111001; // 1
+            4'b0010: seg = 7'b0100100; // 2
+            4'b0011: seg = 7'b0110000; // 3
+            4'b0100: seg = 7'b0011001; // 4
+            4'b0101: seg = 7'b0010010; // 5
+            4'b0110: seg = 7'b0000010; // 6
+            4'b0111: seg = 7'b1111000; // 7
+            4'b1000: seg = 7'b0000000; // 8
+            4'b1001: seg = 7'b0011000; // 9
+            4'b1010: seg = 7'b0000001; // S
+            4'b1011: seg = 7'b0001000; // P
+            4'b1100: seg = 7'b1000001; // F
+            default: seg = 7'b1111111; // Display apagado
+        endcase
+    endfunction
+    // Inicializando o estado e contador de erro
+    always @(posedge clock or posedge reset) begin
+        if (reset) begin
+            state <= q0; // Inicia no estado inicial
+            error_led <= 1'b0; // Nenhum erro no início
+            state_display <= 2'b00; // Estado inicial do display
+            error_count <= 2'b00; // Resetando o contador de erros
+        end else begin
+            state <= next_state; // Move para o próximo estado
+        end
+    end
+
+    // Lógica de transição de estados
+    always @(*) begin
+        next_state = state;
+        case (state)
+            q0: begin
+                if (number == N0) begin
+                    next_state = q1;
+                    display_num <=seg(4);
+                end 
+
+                else begin
+                    next_state = Partial;
+                    display_num <= seg(3);
+                end
+            
+            end
+            Error: next_state = Error;
+            display_num <= seg(0) // Permanece no estado de erro
+        endcase
+    end
+
+
